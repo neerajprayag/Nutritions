@@ -27,54 +27,63 @@ namespace Nutritions.Controllers
         {
             try
             {
-                // Insert into Meals table and retrieve the generated MealId
-                var parameters = new[]
+                if (mealDto.MealItems == null || !mealDto.MealItems.Any())
+                    return BadRequest("No meal items provided.");
+
+                if (mealDto.MealDates == null || !mealDto.MealDates.Any())
+                    return BadRequest("No dates selected.");
+
+                foreach (var mealDate in mealDto.MealDates)
                 {
-            new SqlParameter("@UserId", mealDto.UserId),
-            new SqlParameter("@MealName", mealDto.MealName),
-            new SqlParameter("@Calories", mealDto.Calories),
-            new SqlParameter("@Protein", mealDto.Protein),
-            new SqlParameter("@Carbs", mealDto.Carbs),
-            new SqlParameter("@Fat", mealDto.Fat),
-            new SqlParameter("@Category", mealDto.CategoryId),
-            new SqlParameter("@MealDate", mealDto.MealDate),
-        };
-
-                var mealIdParameter = new SqlParameter
-                {
-                    ParameterName = "@MealId",
-                    SqlDbType = System.Data.SqlDbType.Int,
-                    Direction = System.Data.ParameterDirection.Output
-                };
-
-                var sql = "EXEC AddMeal @UserId, @MealName, @Calories, @Protein, @Carbs, @Fat, @Category, @MealDate, @MealId OUTPUT";
-
-                await _context.Database.ExecuteSqlRawAsync(sql, parameters.Concat(new[] { mealIdParameter }).ToArray());
-                var mealId = (int)mealIdParameter.Value;
-
-                // Insert related MealItems
-                foreach (var item in mealDto.MealItems)
-                {
-                    var itemParameters = new[]
+                    // Insert into Meals table and retrieve the generated MealId
+                    var parameters = new[]
                     {
-                new SqlParameter("@MealId", mealId),
-                new SqlParameter("@FoodItem", item.FoodItem),
-                new SqlParameter("@FoodWeight", item.FoodWeight),
-                new SqlParameter("@Calories", item.Calories),
-                new SqlParameter("@Protein", item.Protein),
-                new SqlParameter("@Carbs", item.Carbs),
-                new SqlParameter("@Fat", item.Fat),
-                new SqlParameter("@CreatedDate", DateTime.UtcNow),
-                new SqlParameter("@ModifiedDated", DBNull.Value),
-                new SqlParameter("@IsDeleted", false),
+                new SqlParameter("@UserId", mealDto.UserId),
+                new SqlParameter("@MealName", mealDto.MealName),
+                new SqlParameter("@Calories", mealDto.Calories),
+                new SqlParameter("@Protein", mealDto.Protein),
+                new SqlParameter("@Carbs", mealDto.Carbs),
+                new SqlParameter("@Fat", mealDto.Fat),
+                new SqlParameter("@Category", mealDto.CategoryId),
+                new SqlParameter("@MealDate", mealDate)
             };
 
-                    await _context.Database.ExecuteSqlRawAsync(
-                        "EXEC AddMealItem @MealId, @FoodItem, @FoodWeight, @Calories, @Protein, @Carbs, @Fat, @CreatedDate, @ModifiedDated, @IsDeleted",
-                        itemParameters);
+                    var mealIdParameter = new SqlParameter
+                    {
+                        ParameterName = "@MealId",
+                        SqlDbType = System.Data.SqlDbType.Int,
+                        Direction = System.Data.ParameterDirection.Output
+                    };
+
+                    var sql = "EXEC AddMeal @UserId, @MealName, @Calories, @Protein, @Carbs, @Fat, @Category, @MealDate, @MealId OUTPUT";
+
+                    await _context.Database.ExecuteSqlRawAsync(sql, parameters.Concat(new[] { mealIdParameter }).ToArray());
+                    var mealId = (int)mealIdParameter.Value;
+
+                    // Insert related MealItems
+                    foreach (var item in mealDto.MealItems)
+                    {
+                        var itemParameters = new[]
+                        {
+                    new SqlParameter("@MealId", mealId),
+                    new SqlParameter("@FoodItem", item.FoodItem),
+                    new SqlParameter("@FoodWeight", item.FoodWeight),
+                    new SqlParameter("@Calories", item.Calories),
+                    new SqlParameter("@Protein", item.Protein),
+                    new SqlParameter("@Carbs", item.Carbs),
+                    new SqlParameter("@Fat", item.Fat),
+                    new SqlParameter("@CreatedDate", DateTime.UtcNow),
+                    new SqlParameter("@ModifiedDated", DBNull.Value),
+                    new SqlParameter("@IsDeleted", false),
+                };
+
+                        await _context.Database.ExecuteSqlRawAsync(
+                            "EXEC AddMealItem @MealId, @FoodItem, @FoodWeight, @Calories, @Protein, @Carbs, @Fat, @CreatedDate, @ModifiedDated, @IsDeleted",
+                            itemParameters);
+                    }
                 }
 
-                return Ok("Meal added successfully.");
+                return Ok("Meals added successfully for the selected dates.");
             }
             catch (Exception ex)
             {
@@ -83,14 +92,19 @@ namespace Nutritions.Controllers
         }
 
 
+
         // Fetch Meal Categories
         [HttpGet("meal-categories")]
-        public async Task<IActionResult> GetMealCategories()
+        public async Task<IActionResult> GetMealCategories([FromQuery] int noOfMeal = 0)
         {
             try
             {
+                // Prepare the parameter for the stored procedure
+                var param = new SqlParameter("@Noofmeal", noOfMeal);
+
+                // Execute the stored procedure with the parameter
                 var result = await _context.MealCategories
-                    .FromSqlRaw("EXEC GetMealCategoryList")
+                    .FromSqlRaw("EXEC GetMealCategoryList @Noofmeal", param)
                     .ToListAsync();
 
                 return Ok(result);
@@ -100,6 +114,7 @@ namespace Nutritions.Controllers
                 return StatusCode(500, $"Internal server error: {ex.Message}");
             }
         }
+
 
 
         [HttpGet("meal-history/{userId}")]
@@ -214,16 +229,16 @@ namespace Nutritions.Controllers
     public class MealDto
     {
         public int UserId { get; set; }
-        public string MealName { get; set; } // Matches "MealName" in JSON
-       
-        public string Calories { get; set; } // Matches "Calories" in JSON
-        public string Protein { get; set; }  // Matches "Protein" in JSON
-        public string Carbs { get; set; }    // Matches "Carbs" in JSON
-        public string Fat { get; set; }      // Matches "Fat" in JSON
-        public int CategoryId { get; set; }  // Matches "CategoryId" in JSON
-        public DateTime MealDate { get; set; } // Matches "MealDate" in JSON
-        public List<MealItemDto> MealItems { get; set; } // Matches "MealItems" in JSON
+        public string MealName { get; set; }
+        public string Calories { get; set; }
+        public string Protein { get; set; }
+        public string Carbs { get; set; }
+        public string Fat { get; set; }
+        public int CategoryId { get; set; }
+        public List<DateTime> MealDates { get; set; } // List of selected dates
+        public List<MealItemDto> MealItems { get; set; }
     }
+
 
     public class MealItemDto
     {

@@ -22,7 +22,8 @@ namespace Nutritions.Utility
         public DbSet<MealItems> MealItems { get; set; }
         public DbSet<TopNutrientFoods> TopNutrientFoods { get; set; }
         public DbSet<MealCategories> MealCategories { get; set; }
-     
+        public DbSet<User> Users { get; set; }
+
 
 
         //public DbSet<SuperFood> SuperFoods { get; set; }
