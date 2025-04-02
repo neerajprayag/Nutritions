@@ -10,7 +10,8 @@ builder.Services.AddControllers();
 builder.Services.AddHttpClient(); // Register IHttpClientFactory
 
 // Configure DbContext
-var connectionString = builder.Configuration.GetConnectionString("NutritionDb");
+//var connectionString = builder.Configuration.GetConnectionString("NutritionDb");
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<NutritionDbContext>(options =>
     options.UseSqlServer(connectionString));
 
@@ -38,7 +39,10 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReactApp", policy =>
     {
-        policy.WithOrigins("http://localhost:3000")
+        policy.WithOrigins(
+            "http://localhost:3000",
+            "https://neerajprayag.github.io"
+            )
               .AllowAnyHeader()
               .AllowAnyMethod();
     });
