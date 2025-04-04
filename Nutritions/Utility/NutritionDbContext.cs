@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Nutritions.Model;
+using static AdminController;
 
 namespace Nutritions.Utility
 {
@@ -23,6 +24,16 @@ namespace Nutritions.Utility
         public DbSet<TopNutrientFoods> TopNutrientFoods { get; set; }
         public DbSet<MealCategories> MealCategories { get; set; }
         public DbSet<User> Users { get; set; }
+        public DbSet<Tran_AminoAcids> Tran_AminoAcids { get; set; }
+        public DbSet<ProteinSourceDto> ProteinSourceDto { get; set; }
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            // 👇 Mark as keyless entity
+            modelBuilder.Entity<ProteinSourceDto>().HasNoKey();
+
+            base.OnModelCreating(modelBuilder);
+        }
 
 
 

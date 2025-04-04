@@ -10,8 +10,8 @@ builder.Services.AddControllers();
 builder.Services.AddHttpClient(); // Register IHttpClientFactory
 
 // Configure DbContext
-//var connectionString = builder.Configuration.GetConnectionString("NutritionDb");
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+var connectionString = builder.Configuration.GetConnectionString("NutritionDb");
+//var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<NutritionDbContext>(options =>
     options.UseSqlServer(connectionString));
 
@@ -35,18 +35,36 @@ builder.Services.AddAuthentication(options =>
 });
 
 // Add CORS
+//builder.Services.AddCors(options =>
+//{
+//    options.AddPolicy("AllowReactApp", policy =>
+//    {
+//        policy.WithOrigins(
+//            "http://localhost:3000",
+//            "https://neerajprayag.github.io"
+//            )
+//              .AllowAnyHeader()
+//              .AllowAnyMethod();
+//    });
+//});
+var MyAllowSpecificOrigins = "_myAllowSpecificOrigins";
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowReactApp", policy =>
-    {
-        policy.WithOrigins(
+    options.AddPolicy(name: MyAllowSpecificOrigins,
+        policy =>
+        {
+
+            // policy.WithOrigins("https://agreeable-bay-093c66d0f.6.azurestaticapps.net")
+            policy.WithOrigins(
             "http://localhost:3000",
-            "https://neerajprayag.github.io"
-            )
-              .AllowAnyHeader()
-              .AllowAnyMethod();
-    });
+            "https://agreeable-bay-093c66d0f.6.azurestaticapps.net"
+        )
+                  .AllowAnyHeader()
+                  .AllowAnyMethod();
+        });
 });
+
+
 
 // Add Controllers
 builder.Services.AddControllers();
@@ -56,13 +74,15 @@ builder.Services.AddSwaggerGen();
 var app = builder.Build();
 
 // Configure middleware
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
+//comment out the below code to disable swagger in production
+//if (app.Environment.IsDevelopment())
+//{
+app.UseSwagger();
     app.UseSwaggerUI();
-}
+//}
 
 app.UseHttpsRedirection();
+app.UseCors(MyAllowSpecificOrigins);
 app.UseAuthentication(); // Ensure this middleware is included
 app.UseAuthorization();
 app.UseCors("AllowReactApp");

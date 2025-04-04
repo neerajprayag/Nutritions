@@ -402,6 +402,92 @@ public class AdminController : ControllerBase
         return Ok("Record deleted successfully.");
     }
 
+    // [HttpGet("top-protein-sources")]
+    //public async Task<IActionResult> GetTopProteinSources()
+    //{
+    //    var tempResults = await _context.Tran_AminoAcids
+    //        .Select(a => new
+    //        {
+    //            FoodItem = a.FoodItem,
+    //            Histidine = a.HISTIDINE,
+    //            Lysine = a.LYSINE,
+    //            Isoleucine = a.ISOLEUCINE,
+    //            Leucine = a.LEUCINE,
+    //            Theronine = a.THERONINE,
+    //            Methionine = a.METHIONINE,
+    //            Phenylalanine = a.PHENYLALANINE,
+    //            Trytophan = a.TRYTOPHAN,
+    //            TotalAminoAcids = a.HISTIDINE + a.LYSINE + a.ISOLEUCINE + a.LEUCINE +
+    //                               a.THERONINE + a.METHIONINE + a.PHENYLALANINE + a.TRYTOPHAN
+    //        })
+    //        .ToListAsync();
+
+    //    var results = tempResults
+    //        .GroupBy(a => a.FoodItem)
+    //        .Select(g => g.OrderByDescending(a => a.TotalAminoAcids).FirstOrDefault())
+    //        .OrderByDescending(a => a.TotalAminoAcids)
+    //        .Take(10)
+    //        .Select(a => new
+    //        {
+    //            foodItem = a.FoodItem,
+    //            histidine = a.Histidine,
+    //            lysine = a.Lysine,
+    //            isoleucine = a.Isoleucine,
+    //            leucine = a.Leucine,
+    //            theronine = a.Theronine,
+    //            methionine = a.Methionine,
+    //            phenylalanine = a.Phenylalanine,
+    //            trytophan = a.Trytophan
+    //        })
+    //        .ToList(); // materialise to list.
+
+    //    return Ok(results);
+    //}
+    //[HttpGet("top-protein-sources")]
+    //public async Task<IActionResult> GetTopProteinSources()
+    //{
+    //    var results = await _context.Set<ProteinSourceDto>()
+    //        .FromSqlRaw("EXEC GetTop10ProteinSources")
+    //        .ToListAsync();
+
+    //    return Ok(results);
+    //}
+
+    
+    [HttpGet("top-protein-sources")]
+    public async Task<IActionResult> GetTopProteinSources()
+    {
+        var result = new List<List<Dictionary<string, object>>>();
+
+        var conn = _context.Database.GetDbConnection();
+        await conn.OpenAsync();
+
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = "GetTop10ProteinSources";
+        cmd.CommandType = CommandType.StoredProcedure;
+
+        using var reader = await cmd.ExecuteReaderAsync();
+
+        do
+        {
+            var table = new List<Dictionary<string, object>>();
+            while (await reader.ReadAsync())
+            {
+                var row = new Dictionary<string, object>();
+                for (int i = 0; i < reader.FieldCount; i++)
+                {
+                    row[reader.GetName(i)] = reader.IsDBNull(i) ? 0 : reader.GetValue(i);
+                }
+                table.Add(row);
+            }
+            result.Add(table);
+        } while (await reader.NextResultAsync());
+
+        await conn.CloseAsync();
+
+        return Ok(result);
+    }
+
 
 
 }
