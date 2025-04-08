@@ -7,6 +7,7 @@ using Nutritions.Model;
 using Nutritions.Utility;
 using Microsoft.Data.SqlClient;
 using System.Data;
+using Newtonsoft.Json;
 
 
 [Route("api/admin")]
@@ -488,6 +489,125 @@ public class AdminController : ControllerBase
         return Ok(result);
     }
 
+    [HttpGet("top-carbohydrate-sources")]
+    public async Task<IActionResult> GetTopCarbohydrateSources()
+    {
+        var result = new List<List<Dictionary<string, object>>>();
 
+        var conn = _context.Database.GetDbConnection();
+        await conn.OpenAsync();
 
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = "GetTop10CarbohydrateSources";
+        cmd.CommandType = CommandType.StoredProcedure;
+
+        using var reader = await cmd.ExecuteReaderAsync();
+
+        do
+        {
+            var table = new List<Dictionary<string, object>>();
+            while (await reader.ReadAsync())
+            {
+                var row = new Dictionary<string, object>();
+                for (int i = 0; i < reader.FieldCount; i++)
+                {
+                    row[reader.GetName(i)] = reader.IsDBNull(i) ? 0 : reader.GetValue(i);
+                }
+                table.Add(row);
+            }
+            result.Add(table);
+        } while (await reader.NextResultAsync());
+
+        await conn.CloseAsync();
+
+        return Ok(result);
+    }
+
+    [HttpGet("top-fat-sources")]
+    public async Task<IActionResult> GetTopFatSources()
+    {
+        var result = new List<List<Dictionary<string, object>>>();
+
+        var conn = _context.Database.GetDbConnection();
+        await conn.OpenAsync();
+
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = "GetTop10FatSources";
+        cmd.CommandType = CommandType.StoredProcedure;
+
+        using var reader = await cmd.ExecuteReaderAsync();
+
+        do
+        {
+            var table = new List<Dictionary<string, object>>();
+            while (await reader.ReadAsync())
+            {
+                var row = new Dictionary<string, object>();
+                for (int i = 0; i < reader.FieldCount; i++)
+                {
+                    row[reader.GetName(i)] = reader.IsDBNull(i) ? 0 : reader.GetValue(i);
+                }
+                table.Add(row);
+            }
+            result.Add(table);
+        } while (await reader.NextResultAsync());
+
+        await conn.CloseAsync();
+
+        return Ok(result);
+    }
+    [HttpPost("log-visit")]
+    public async Task<IActionResult> LogVisit()
+    {
+        var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
+        var userAgent = Request.Headers["User-Agent"].ToString();
+        var url = Request.Headers["X-Page-Url"].ToString(); // sent from frontend
+        var referrer = Request.Headers["Referer"].ToString();
+
+        string country = "", region = "", city = "";
+
+        using (var httpClient = new HttpClient())
+        {
+            try
+            {
+                var locationResponse = await httpClient.GetStringAsync($"https://ipapi.co/{ip}/json/");
+                dynamic locationData = JsonConvert.DeserializeObject(locationResponse);
+                country = locationData.country_name;
+                region = locationData.region;
+                city = locationData.city;
+            }
+            catch
+            {
+                // Fail silently
+            }
+        }
+
+        var log = new VisitorLog
+        {
+            IPAddress = ip,
+            UserAgent = userAgent,
+            Country = country,
+            Region = region,
+            City = city,
+            UrlVisited = url,
+            Referrer = referrer,
+            VisitTime = DateTime.UtcNow
+        };
+
+        _context.VisitorLogs.Add(log);
+        await _context.SaveChangesAsync();
+
+        return Ok();
+    }
+
+    [HttpGet("visitor-logs")]
+    public async Task<IActionResult> GetVisitorLogs()
+    {
+        var logs = await _context.VisitorLogs
+            .OrderByDescending(x => x.VisitTime)
+            .Take(100) // Latest 100
+            .ToListAsync();
+
+        return Ok(logs);
+    }
 }

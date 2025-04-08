@@ -3,6 +3,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Nutritions.Utility;
 using System.Text;
+using Microsoft.AspNetCore.Mvc;
+using Newtonsoft.Json;
+//using Microsoft.AspNetCore.Mvc.NewtonsoftJson;
 
 var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
@@ -10,8 +13,8 @@ builder.Services.AddControllers();
 builder.Services.AddHttpClient(); // Register IHttpClientFactory
 
 // Configure DbContext
-var connectionString = builder.Configuration.GetConnectionString("NutritionDb");
-//var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+//var connectionString = builder.Configuration.GetConnectionString("NutritionDb");
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<NutritionDbContext>(options =>
     options.UseSqlServer(connectionString));
 
@@ -67,9 +70,12 @@ builder.Services.AddCors(options =>
 
 
 // Add Controllers
-builder.Services.AddControllers();
+builder.Services.AddControllers().AddNewtonsoftJson();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+    
+
 
 var app = builder.Build();
 
