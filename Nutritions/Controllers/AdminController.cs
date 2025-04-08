@@ -559,27 +559,48 @@ public class AdminController : ControllerBase
     [HttpPost("log-visit")]
     public async Task<IActionResult> LogVisit()
     {
-        var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
+        // Extract IP from header or fallback to remote address
+        var ipRaw = Request.Headers["X-Forwarded-For"].FirstOrDefault() ??
+                    HttpContext.Connection.RemoteIpAddress?.ToString();
+
+        // Remove port if present (e.g., "86.17.88.196:52780")
+        var ip = ipRaw?.Split(':').FirstOrDefault();
+
         var userAgent = Request.Headers["User-Agent"].ToString();
-        var url = Request.Headers["X-Page-Url"].ToString(); // sent from frontend
+        var url = Request.Headers["X-Page-Url"].ToString();
         var referrer = Request.Headers["Referer"].ToString();
 
         string country = "", region = "", city = "";
 
-        using (var httpClient = new HttpClient())
+        if (string.IsNullOrEmpty(ip) || ip == "::1" || ip.StartsWith("127.") || ip.StartsWith("::ffff:127."))
         {
-            try
+            country = "Localhost";
+            region = "Development";
+            city = "Local";
+        }
+        else
+        {
+            using (var httpClient = new HttpClient())
             {
-                var locationResponse = await httpClient.GetStringAsync($"https://ipapi.co/{ip}/json/");
-                dynamic locationData = JsonConvert.DeserializeObject(locationResponse);
-                country = locationData.country_name;
-                region = locationData.region;
-                city = locationData.city;
+                try
+                {
+                    httpClient.DefaultRequestHeaders.Add("User-Agent", "NutritionApp");
+
+                    var apiUrl = $"https://ipapi.co/{ip}/json/";
+                    var locationResponse = await httpClient.GetStringAsync(apiUrl);
+                    Console.WriteLine($"GeoLookup Response: {locationResponse}");
+
+                    dynamic locationData = JsonConvert.DeserializeObject(locationResponse);
+                    country = locationData?.country_name ?? "";
+                    region = locationData?.region ?? "";
+                    city = locationData?.city ?? "";
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"GeoLookup failed for IP {ip}: {ex.Message}");
+                }
             }
-            catch
-            {
-                // Fail silently
-            }
+
         }
 
         var log = new VisitorLog
@@ -599,6 +620,8 @@ public class AdminController : ControllerBase
 
         return Ok();
     }
+
+
 
     [HttpGet("visitor-logs")]
     public async Task<IActionResult> GetVisitorLogs()
